@@ -1,43 +1,48 @@
 #include "CPU.h"
 
-using namespace emu6502;
-
-CPU::CPU() 
+emu6502::CPU::CPU()
 {
 	reset();
 }
 
-CPU::~CPU() {}
+emu6502::CPU::~CPU() {}
 
-void CPU::reset()
+void emu6502::CPU::connectBus(Bus &bus)
+{
+	bus = bus;
+}
+
+void emu6502::CPU::reset()
 {
 	// 0xFFFC Sets us to a location that we can immediately use in memory
 	pc = 0xFFFC;
+	// Stack pointer starts at memory address 0x01000 
 	stkp = 0x0100;
 
+	// Clear registers
 	acc = 0x00;
 	x = 0x00; 
 	y = 0x00;
 	status = 0x00;
-
 }
 
-uint8_t CPU::fetch()
+uint8_t emu6502::CPU::fetch()
 {
 	pc++;
-	return bus.read(pc);
-
+	return bus->read(pc);
 }
 
-void CPU::execute(uint8_t instruction)
+// TODO
+void emu6502::CPU::execute(uint8_t instruction)
 {
 
 }
 
-void CPU::doInstruction(int cyclesNeeded)
+void emu6502::CPU::doInstruction(int cyclesNeeded)
 {
 	uint8_t instruction = fetch();
 	execute(instruction);
+	cyclesNeeded--;
 }
 
 

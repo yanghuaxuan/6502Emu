@@ -2,6 +2,10 @@
 #include "CPU.h"
 #include "RAM.h"
 
+// Prevent circular inclusion
+class CPU;
+class RAM;
+
 namespace emu6502
 {
 	class Bus
@@ -11,7 +15,7 @@ namespace emu6502
 		void write();
 	private:
 		// Get access to devices
-		CPU cpu;
-		RAM ram;
+		CPU *cpu = nullptr;
+		RAM *ram = nullptr;
 	};
 }
