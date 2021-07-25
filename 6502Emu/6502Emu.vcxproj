@@ -141,13 +141,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Bus.cpp" />
     <ClCompile Include="CPU.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="RAM.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Bus.h" />
     <ClInclude Include="CPU.h" />
     <ClInclude Include="emu6502.h" />
     <ClInclude Include="RAM.h" />

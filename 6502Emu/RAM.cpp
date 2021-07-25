@@ -1,4 +1,5 @@
 #include "RAM.h"
+#include <iostream>
 
 emu6502::RAM::RAM()
 {
@@ -10,21 +11,20 @@ emu6502::RAM::~RAM() {}
 void emu6502::RAM::init()
 {
 	// Clear RAM
-	for (uint8_t i : ram)
+	for (int i = 0; i < MEM_SIZE; i++)
 	{
-		i = 0x00;
+		ram[i] = 0x00;
 	}
-}
-
-void emu6502::RAM::connectBus(Bus &bus)
-{
-	bus = bus;
 }
 
 uint8_t emu6502::RAM::mem_read(uint16_t addr)
 {
 	// Check if address is legal
-	return addr < MEM_SIZE ? ram[addr] : 0x00;
+	if (addr >= 0x0000 && addr < 0x10000)
+	{
+		return ram[addr];
+	}
+	return 0x00;
 }
 
 void emu6502::RAM::mem_write(uint16_t addr, uint8_t data)

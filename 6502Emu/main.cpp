@@ -4,8 +4,11 @@
 int main()
 {
 	using namespace std;
+
+	emu6502::RAM ram;
 	emu6502::CPU cpu;
-	cout << "Hello world" << endl;
+
+	cpu.execute("LDA", 2);
 
 	return 0;
 }
