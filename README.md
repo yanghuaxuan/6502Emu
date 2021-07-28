@@ -3,9 +3,7 @@
 - Currently not working 
 
 ## To-Do  
-- Figure out clock cycles
 - Implement reading instructions from RAM  
+- Finish instruction implementations
 - OpCodes
-- Addressing modes
-- Change status register
 - Etc..
