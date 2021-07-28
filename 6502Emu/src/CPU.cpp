@@ -89,8 +89,6 @@ void emu6502::CPU::execute()
 }
 
 
-
-
 // Addressing Mode implementations
 
 
@@ -234,9 +232,7 @@ uint8_t emu6502::CPU::REL()
 }
 
 
-
-
-// Opcode Implementations
+// Instruction implementations
 
 
 uint8_t emu6502::CPU::ADC()
@@ -263,6 +259,155 @@ uint8_t emu6502::CPU::AND()
 
 	return 1;
 }
+
+/*
+* Branche if Carry Set 
+* Address is pc added by relative addr if carry mode is ON
+*/
+uint8_t emu6502::CPU::BCS()
+{
+	if (status & (1 << C))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		// Set program counter to new counter
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BCC()
+{
+	clock.cycle();
+	abs_addr = pc + abs_addr;
+	if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+	{
+		clock.cycle();
+	}
+	pc = abs_addr;
+
+	return 0;
+}
+
+uint8_t emu6502::CPU::BEQ()
+{
+	if (status & (1 << Z))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BMI()
+{
+	if (status & (1 << N))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BNE()
+{
+	if (!(status & (1 << Z)))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BPL()
+{
+	if (!(status & (1 << N)))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BVC()
+{
+	if (!(status & (1 << V)))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BVS()
+{
+	if (status & (1 << V))
+	{
+		clock.cycle();
+		abs_addr = pc + rel_addr;
+		if ((abs_addr & 0xFF00) != (pc & 0xFF00))
+		{
+			clock.cycle();
+		}
+		pc = abs_addr;
+	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::CLC()
+{
+	status &= ~(1 << C);
+	return 0;
+}
+
+uint8_t emu6502::CPU::CLD()
+{
+	status &= ~(1 << D);
+	return 0;
+}
+
+uint8_t emu6502::CPU::CLI()
+{
+	status &= ~(1 << I);
+	return 0;
+}
+
+uint8_t emu6502::CPU::CLV()
+{
+	status &= ~(1 << V);
+	return 0;
+}
+
 
 uint8_t emu6502::CPU::LDA()
 {
