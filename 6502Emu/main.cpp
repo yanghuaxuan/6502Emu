@@ -6,9 +6,8 @@ int main()
 	using namespace std;
 
 	emu6502::RAM ram;
+	ram.mem_write(0xFFFC, 0xA9);
 	emu6502::CPU cpu;
-
-	cpu.execute("LDA", 2);
 
 	return 0;
 }

@@ -1,7 +1,11 @@
+/*
+* http://archive.6502.org/datasheets/rockwell_r650x_r651x.pdf
+*/
+
 #pragma once
 #include <cstdint>
-#include <unordered_map>
 #include <string>
+#include <vector>
 #include "RAM.h"
 
 namespace emu6502
@@ -14,26 +18,65 @@ namespace emu6502
 		~CPU();
 
 		void connectRam(RAM& ram);
-		uint8_t fetch();
-		void execute(std::string opCode, int cyclesNeeded);
 		void reset();
 
 		typedef uint8_t(CPU::* opFunc)();
-		// opCode Map 
-		std::unordered_map<std::string, opFunc> opCodes = {
-			{"LDA", &CPU::LDA},
+		struct instruction
+		{
+			std::string name;
+			uint8_t(*op)();
+			uint8_t cycles;
 		};
- 	private:
+		// Instruction matrix table
+		std::vector<instruction> instructions;
+	private:
 		RAM ram;
-		// Might have to check w/ stack pointer type
+		// Program counter and stack pointer
 		uint16_t pc, stkp;
-		uint8_t acc;
+		// Our accumulator for arithmetic and logical opreations
+		uint8_t A;
+		// Registers x and y
 		uint8_t x, y;
 
-		void clock();
+		// This is to store values modified by addressing modes
+		uint8_t  fetched; // Store current fetched value
+		uint16_t temp; // Store temp variables
+		uint16_t abs_addr; // Store absolute (full) memory address
+		uint16_t rel_addr; // Store branch instructions to jump
+		uint8_t  ir; // Store current instruction
+
+		// Fetch an instruction from program counter or a specified address
+		uint8_t fetch();
+		uint8_t fetch(uint16_t addr);
+		// Fetch with IMP checking
+		uint8_t fetch_noIMP();
+
+		void execute();
+		
+		struct Clock
+		{
+			int  clockCycles = 0; // Counts how many cycles the instruction has remaining
+			int clockCounter = 0; // A global accumulation of the number of clocks
+			void cycle() // Go through one cycle
+			{
+				clockCycles--;
+				clockCounter++;
+			}
+			void addCycles(uint8_t cycles)
+			{
+				clockCycles += cycles;
+			}
+		} clock;
+
 
 		uint8_t status;
 		enum flags { C, Z, I, D, B, U, V, N };
+
+		// Addressing Modes
+		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();	uint8_t ZP0(); 
+		uint8_t ZPX();	uint8_t ZPY();	uint8_t REL();	uint8_t ABS();	
+		uint8_t ABX();	uint8_t ABY();	uint8_t IND();	uint8_t IZX();
+		uint8_t IZY();
 
 		// Opcode function declaration
 		uint8_t ADC();	uint8_t AND();	uint8_t ASL();	uint8_t BCC();

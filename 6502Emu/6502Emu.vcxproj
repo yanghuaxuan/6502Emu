@@ -150,6 +150,9 @@
     <ClInclude Include="emu6502.h" />
     <ClInclude Include="RAM.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="opcodes.csv" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
