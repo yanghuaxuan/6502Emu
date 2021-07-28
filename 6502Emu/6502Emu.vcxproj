@@ -151,7 +151,7 @@
     <ClInclude Include="RAM.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="opcodes.csv" />
+    <None Include="opcodes.tsv" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
