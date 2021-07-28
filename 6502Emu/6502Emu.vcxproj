@@ -141,9 +141,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="opcodes.tsv" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="src\CPU.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\RAM.cpp" />
