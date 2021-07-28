@@ -141,17 +141,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CPU.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="RAM.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="CPU.h" />
-    <ClInclude Include="emu6502.h" />
-    <ClInclude Include="RAM.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="opcodes.tsv" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\CPU.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\RAM.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\CPU.h" />
+    <ClInclude Include="src\emu6502.h" />
+    <ClInclude Include="src\RAM.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

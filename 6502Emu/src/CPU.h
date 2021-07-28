@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "RAM.h"
+#include <fstream>
 
 namespace emu6502
 {
@@ -20,15 +21,8 @@ namespace emu6502
 		void connectRam(RAM& ram);
 		void reset();
 
-		typedef uint8_t(CPU::* opFunc)();
-		struct instruction
-		{
-			std::string name;
-			uint8_t(*op)();
-			uint8_t cycles;
-		};
-		// Instruction matrix table
-		std::vector<instruction> instructions;
+
+
 	private:
 		RAM ram;
 		// Program counter and stack pointer
@@ -45,6 +39,15 @@ namespace emu6502
 		uint16_t rel_addr; // Store branch instructions to jump
 		uint8_t  ir; // Store current instruction
 
+		struct instruction
+		{
+			std::string name;
+			uint8_t(CPU::* op)();
+			uint8_t(CPU::* add)();
+			int cycles;
+		};
+		std::vector<instruction> instructions;
+
 		// Fetch an instruction from program counter or a specified address
 		uint8_t fetch();
 		uint8_t fetch(uint16_t addr);
@@ -52,7 +55,7 @@ namespace emu6502
 		uint8_t fetch_noIMP();
 
 		void execute();
-		
+
 		struct Clock
 		{
 			int  clockCycles = 0; // Counts how many cycles the instruction has remaining
@@ -73,8 +76,8 @@ namespace emu6502
 		enum flags { C, Z, I, D, B, U, V, N };
 
 		// Addressing Modes
-		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();	uint8_t ZP0(); 
-		uint8_t ZPX();	uint8_t ZPY();	uint8_t REL();	uint8_t ABS();	
+		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();	uint8_t ZP0();
+		uint8_t ZPX();	uint8_t ZPY();	uint8_t REL();	uint8_t ABS();
 		uint8_t ABX();	uint8_t ABY();	uint8_t IND();	uint8_t IZX();
 		uint8_t IZY();
 
@@ -93,6 +96,8 @@ namespace emu6502
 		uint8_t SEC();	uint8_t SED();	uint8_t SEI();	uint8_t STA();
 		uint8_t STX();	uint8_t STY();	uint8_t TAX();	uint8_t TAY();
 		uint8_t TSX();	uint8_t TXA();	uint8_t TXS();	uint8_t TYA();
+		uint8_t XXX();
 	};
 }
+
 
