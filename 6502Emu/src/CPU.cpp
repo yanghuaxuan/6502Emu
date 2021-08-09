@@ -33,12 +33,18 @@ void emu6502::CPU::connectRam(RAM& ram)
 	ram = ram;
 }
 
+/*
+* Reset: reset CPU to a known state
+*/
 void emu6502::CPU::reset()
 {
-	// 0xFFFC Sets us to a location that we contains an absolute address to jump to
-	pc = 0xFFFC;
-	// Stack pointer starts at memory address 0x01000 
-	stkp = 0x0100;
+	// Set program counter
+	abs_addr = 0xFFFC;
+	uint16_t low = ram.mem_read(abs_addr);
+	uint16_t high = ram.mem_read(abs_addr + 1);
+	pc = (high << 8) | low;
+
+	stkp = 0xFD;
 
 	// Clear registers
 	A = 0x00;
@@ -47,10 +53,12 @@ void emu6502::CPU::reset()
 	status = 0x00;
 
 	// Clear helper variables
-	temp = 0x0000; 
 	abs_addr = 0x0000; 
 	rel_addr = 0x00;
 	ir = 0x00;
+
+	// Resets take time, 8 cycles in fact
+	clock.addCycles(8);
 }
 
 /*
@@ -231,14 +239,12 @@ uint8_t emu6502::CPU::REL()
 	return 0;
 }
 
-
-// Instruction implementations
-
-
-uint8_t emu6502::CPU::ADC()
-{
-	return 0;
-}
+/*
+* 
+* 
+* Instruction implementations 
+* 
+*/
 
 /*
 * Performs bitwise AND operation
@@ -258,6 +264,25 @@ uint8_t emu6502::CPU::AND()
 	}
 
 	return 1;
+}
+
+/*
+* ASL: Shifts a bit in accumulator to the left by one
+*/
+uint8_t emu6502::CPU::ASL()
+{
+	uint8_t fetched = fetch();
+	uint16_t temp = (uint16_t)fetched << 1;
+	// Carry flag: Activate if high byte is non-zero
+	((temp & 0xFF00) > 0) ? status |= (1 << C) : status &= ~(1 << C);
+	// Zero flag: Activate if low byte is zero
+	((temp & 0x00FF) == 0x00) ? status |= (1 << Z) : status &= ~(1 << Z);
+	// Negative flag: Activate if most significant low byte is 1
+	(temp & 0x80) ? status |= (1 << N) : status &= ~(1 << N);
+	if (instructions[ir].mode == &CPU::IMP)
+		A = temp & 0x00FF;
+	else
+		ram.mem_write(abs_addr, temp & 0x00FF);
 }
 
 /*
@@ -420,3 +445,154 @@ uint8_t emu6502::CPU::LDA()
 
 	return 0;
 }
+
+uint8_t emu6502::CPU::ADC()
+{
+	/*
+	* Add with Carry In
+	* A = A + M + C
+	*/
+	uint8_t fetched = fetch();
+	// We're using 16 bits temp to capture the carry bit and chain ADC function
+	uint16_t temp = (uint16_t)A + (uint16_t)fetched + (uint16_t)(status & (1 << C));
+
+	// If result overflows, set carry flag otherwise unset it
+	temp > 255 ? (status |= (1 << C)) : (status &= ~(1 << C));
+	// Set or unset zero flag
+	temp == 0 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	// Set overflow flag 
+	(~(uint16_t)A ^ (uint16_t)fetched) & ((uint16_t)A ^ (uint16_t)temp & 0x0080) 
+		? (status |= (1 << V)) : (status &= ~(1 << V));
+	// Set negative flag
+	temp & 0x80 ? (status |= 1 << N) : (status &= ~(1 << N));
+	A = temp & 0x00FF;
+
+	return 1;
+}
+
+/*
+* Subtraction formula
+* A = A - M - (1-C)
+* The fetched value (M) will be inverted to perform subtraction,
+* which means it is pretty much the same as ADC
+*/
+uint8_t emu6502::CPU::SBC()
+{
+	uint8_t fetched = fetch();
+	// We still use 16 bits to catch carry outs
+	uint16_t value = ((uint16_t)fetched) ^ 0x00FF;
+
+	uint16_t temp = (uint16_t)A + (uint16_t)fetched + (uint16_t)(status & (1 << C));
+
+	// Carry flag modification
+	temp > 255 ? (status |= (1 << C)) : (status &= ~(1 << C));
+	// Zero flag modification
+	temp == 0 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	// Overflow flag modifcation
+	(~(uint16_t)A ^ (uint16_t)fetched)& ((uint16_t)A ^ (uint16_t)temp & 0x0080)
+		? (status |= (1 << V)) : (status &= ~(1 << V));
+	// Negative flag modifcation
+	temp & 0x80 ? (status |= 1 << N) : (status &= ~(1 << N));
+	A = temp & 0x00FF;
+
+	return 1;
+}	
+
+/*
+* PHA: Push the accumulator
+*/
+uint8_t emu6502::CPU::PHA()
+{
+	ram.mem_write(0x0100 + stkp--, A);
+	return 0;
+}
+
+/* 
+* PLA: Pull from accumulator
+* Note: This also pops the top item in stack
+*/
+uint8_t emu6502::CPU::PLA()
+{
+	A = ram.mem_read(0x0100 + ++stkp);
+	A == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	A == 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+uint8_t emu6502::CPU::RTI()
+{
+// We're doing pre-increments because during IRQ, the stack pointer
+// would've been incremented 3 times, and therefore would've been off-by-one
+	
+	// Set back status register 
+	status = ram.mem_read(0x0100 + ++stkp);
+	status &= ~(1 << B);
+	status &= ~(1 << U);
+	// Set back program counter
+	pc = (uint16_t)ram.mem_read(0x0100 + ++stkp);
+	pc |= (uint16_t)ram.mem_read(0x0100 + ++stkp) << 8;
+
+	return 0;
+}
+
+/*
+* 
+* 
+* Interrupts
+* 
+*/
+
+/*
+* IRQ: Requests an interrupt when called
+*/
+void emu6502::CPU::irq()
+{
+	// Check if disable interrupts flag is set
+	if (!(status & (1 << I)))
+	{
+		// Write current program counter to return from
+		ram.mem_write(0x0100 + stkp--, (pc >> 8) & 0x00FF);
+		ram.mem_write(0x0100 + stkp--, pc & 0x00FF);
+
+		// Write status for returning
+		status &= ~(1 << B);
+		status |= (1 << U);
+		status |= (1 << I);
+		ram.mem_write(0x0100 + stkp--, status);
+
+		// Set program counter 
+		abs_addr = 0xFFFE;
+		uint16_t low = ram.mem_read(abs_addr);
+		uint16_t high = ram.mem_read(abs_addr + 1);
+		pc = (high << 8) | low;
+
+		clock.addCycles(7);
+	}
+}
+
+/*
+* NMI: Same as IRQ, but you can't be ignored with something like
+* setting I flag
+*/
+void emu6502::CPU::nmi()
+{
+	// Push program counter to stack
+	ram.mem_write(0x0100 + stkp--, (pc >> 8) & 0x00FF);
+	ram.mem_write(0x0100 + stkp--, pc & 0x00FF);
+
+	// Set status and write to stack
+	status &= ~(1 << B);
+	status |= (1 << U);
+	status |= (1 << I);
+	ram.mem_write(0x0100 + stkp--, status);
+
+	// Set program counter 
+	abs_addr = 0xFFFA;
+	uint16_t low = ram.mem_read(abs_addr);
+	uint16_t high = ram.mem_read(abs_addr + 1);
+	pc = (high << 8) | low;
+
+	clock.addCycles(8);
+}
+

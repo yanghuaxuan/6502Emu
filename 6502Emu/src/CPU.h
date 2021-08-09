@@ -32,8 +32,6 @@ namespace emu6502
 		uint8_t x, y;
 
 		// This is to store values modified by addressing modes
-		uint8_t  fetched; // Store current fetched value
-		uint16_t temp; // Store temp variables
 		uint16_t abs_addr; // Store absolute (full) memory address
 		uint16_t rel_addr; // Store branch instructions to jump
 		uint8_t  ir; // Store current instruction
@@ -42,7 +40,7 @@ namespace emu6502
 		{
 			std::string name;
 			uint8_t(CPU::* op)();
-			uint8_t(CPU::* add)();
+			uint8_t(CPU::* mode)();
 			int cycles;
 		};
 		std::vector<instruction> instructions;
@@ -52,8 +50,11 @@ namespace emu6502
 		uint8_t fetch(uint16_t addr);
 		// Fetch with IMP checking
 		uint8_t fetch_noIMP();
-
 		void execute();
+	
+		// Interrupts
+		void irq();
+		void nmi();
 
 		// 6502 clock emulation
 		struct Clock
