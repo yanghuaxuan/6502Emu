@@ -1,5 +1,14 @@
+/*
+* http://archive.6502.org/datasheets/rockwell_r65c00_microprocessors.pdf
+*/
+
 #include "CPU.h"
 #include <iostream>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <unistd.h>
+#endif
 
 emu6502::CPU::CPU()
 {
@@ -62,36 +71,25 @@ void emu6502::CPU::reset()
 }
 
 /*
-* Fetch data from pc, or by argument
-* @param void or addr
-* @return Single byte of data
+* Executes instructions, which take a variable amount of time,
+* given by the opcode, addressing mode, or the instruction itself. 
+* Then waits until the clock has fully cycled
+* I simulated cycle delays for testing
 */
-uint8_t emu6502::CPU::fetch()
-{
-	return ram.mem_read(pc++);
-}
-
-uint8_t emu6502::CPU::fetch(uint16_t addr)
-{
-	return ram.mem_read(addr);
-}
-
-/*
-* Same as fetch but skip if implied IMP addressing mode is specified
-* @param void (always fetch from pc)
-* @return Single byte of data
-*/
-uint8_t emu6502::CPU::fetch_noIMP()
-{
-	return 0;
-}
- 
 void emu6502::CPU::execute()
 {
+	uint8_t instruction = ram.mem_read(pc++);
+	// Add cycles based given by instruction
+	clock.addCycles(instructions[ir].cycles);
+	// Call given addressing mode function. Stores additional cycles
+	uint8_t aCycles1 = (this->*instructions[ir].mode)();
+	// Execute instruction. Stores additional cycles
+	uint8_t aCycles2 = (this->*instructions[ir].op)();
+	clock.addCycles(aCycles1 + aCycles2);
+
 	while (clock.clockCycles != 0)
 	{
-		uint8_t instruction = fetch();
-		// Function that will execute instruction
+		Sleep(25);
 		clock.cycle();
 	}
 }
@@ -116,22 +114,36 @@ uint8_t emu6502::CPU::ZP0()
 {
 	// Allows us to store the first 256-bytes of data into zero-page,
 	// reducing the amount of cycles needed
-	abs_addr = fetch();
+	abs_addr = ram.mem_read(pc++);
 	abs_addr &= 0x00FF;
 	return 0;
 }
 
 uint8_t emu6502::CPU::ZPX()
 {
-	abs_addr = (fetch() + x);
+	abs_addr = (ram.mem_read(pc++) + x);
+	abs_addr &= 0x00FF;
 
 	return 0;
 }
 
 uint8_t emu6502::CPU::ZPY()
 {
-	abs_addr = (fetch() + y);
+	abs_addr = (ram.mem_read(pc++) + y);
 	abs_addr &= 0x00FF;
+
+	return 0;
+}
+
+// Allow branching instructions to jump (at 128 signed bit limit)
+uint8_t emu6502::CPU::REL()
+{
+	abs_addr = ram.mem_read(pc++);
+	// Checks the most significant bit to see if it's signed or not
+	if (rel_addr & 0x80)
+	{
+		rel_addr |= 0xFF00;
+	}
 
 	return 0;
 }
@@ -139,8 +151,8 @@ uint8_t emu6502::CPU::ZPY()
 // Fetch absolute address
 uint8_t emu6502::CPU::ABS()
 {
-	uint16_t low = fetch();
-	uint16_t high = fetch();
+	uint16_t low = ram.mem_read(pc++);
+	uint16_t high = ram.mem_read(pc++);
 
 	abs_addr = (high << 8) | low;
 
@@ -150,8 +162,8 @@ uint8_t emu6502::CPU::ABS()
 // ABS but with X offset
 uint8_t emu6502::CPU::ABX()
 {
-	uint16_t lo = fetch();
-	uint16_t hi = fetch();
+	uint16_t lo = ram.mem_read(pc++);
+	uint16_t hi = ram.mem_read(pc++);
 
 	abs_addr = (hi << 8) | lo;
 	abs_addr += x;
@@ -162,8 +174,8 @@ uint8_t emu6502::CPU::ABX()
 
 uint8_t emu6502::CPU::ABY()
 {
-	uint16_t lo = fetch();
-	uint16_t hi = fetch();
+	uint16_t lo = ram.mem_read(pc++);
+	uint16_t hi = ram.mem_read(pc++);
 
 	abs_addr = (hi << 8) | lo;
 	abs_addr += y;
@@ -176,8 +188,8 @@ uint8_t emu6502::CPU::ABY()
 uint8_t emu6502::CPU::IND()
 {
 	// Get the actual address where data resides (aka pointer)
-	uint16_t ptr_low = fetch();
-	uint16_t ptr_high = fetch();
+	uint16_t ptr_low = ram.mem_read(pc++);
+	uint16_t ptr_high = ram.mem_read(pc++);
 	uint16_t ptr = (ptr_high << 8) | ptr_low;
 
 	/*
@@ -187,11 +199,11 @@ uint8_t emu6502::CPU::IND()
 	*/ 
 	if (ptr_low == 0x00FF) // This will simulate the bug
 	{
-		abs_addr = (fetch(ptr & 0xFF00) << 8 | fetch(ptr + 0));	
+		abs_addr = (ram.mem_read(ptr & 0xFF00) << 8 | ram.mem_read(ptr + 0));	
 	}
 	else
 	{
-		abs_addr = (fetch(ptr + 1) << 8) | fetch(ptr + 0);
+		abs_addr = (ram.mem_read(ptr + 1) << 8) | ram.mem_read(ptr + 0);
 	} 
 
 	return 0;
@@ -201,43 +213,32 @@ uint8_t emu6502::CPU::IND()
 uint8_t emu6502::CPU::IZX()
 {
 	// Somewhere in the zero page...
-	uint16_t zp_addr = fetch();
+	uint16_t zp_addr = ram.mem_read(pc++);
 
 	// X offset
-	uint16_t low = fetch((uint16_t)(zp_addr + (uint16_t)x) & 0x00FF);
-	uint16_t high = fetch((uint16_t)(zp_addr + (uint16_t)x + 1) & 0x00FF);
+	uint16_t low = ram.mem_read((uint16_t)(zp_addr + (uint16_t)x) & 0x00FF);
+	uint16_t high = ram.mem_read((uint16_t)(zp_addr + (uint16_t)x + 1) & 0x00FF);
 
 	abs_addr = (high << 8) | low;
 
-	return ((abs_addr & 0xFF00) != (high << 8)) ? 1 : 0;
+	return 0;
 }
 
 uint8_t emu6502::CPU::IZY()
 {
 	// Somewhere in the zero page...
-	uint16_t zp_addr = fetch();
+	uint16_t zp_addr = ram.mem_read(pc++);
 
 	// X offset
-	uint16_t low = fetch((uint16_t)(zp_addr + (uint16_t)y) & 0x00FF);
-	uint16_t high = fetch((uint16_t)(zp_addr + (uint16_t)y + 1) & 0x00FF);
+	uint16_t low = ram.mem_read((uint16_t)(zp_addr + (uint16_t)y) & 0x00FF);
+	uint16_t high = ram.mem_read((uint16_t)(zp_addr + (uint16_t)y + 1) & 0x00FF);
 
 	abs_addr = (high << 8) | low;
 
 	return ((abs_addr & 0xFF00) != (high << 8)) ? 1 : 0;
 }
 
-// Allow branching instructions to jump (at 128 signed bit limit)
-uint8_t emu6502::CPU::REL()
-{
-	abs_addr = fetch();
-	// Checks the most significant bit to see if it's signed or not
-	if (rel_addr & 0x80)
-	{
-		rel_addr |= 0xFF00;
-	}
 
-	return 0;
-}
 
 /*
 * 
@@ -247,13 +248,28 @@ uint8_t emu6502::CPU::REL()
 */
 
 /*
+* Fetch data from pc, or by argument
+* @param void or addr
+* @return Single byte of data
+*/
+uint8_t emu6502::CPU::fetch()
+{
+	if (!((instructions[ir].mode) == &CPU::IMP))
+	{
+		fetched = ram.mem_read(abs_addr);
+	}
+	return fetched;
+}
+
+/*
 * Performs bitwise AND operation
 * @param void
 * @return 1 to specify this requires additional clock cycles
 */ 
 uint8_t emu6502::CPU::AND()
 {
-	A = A & fetch();
+	fetch();
+	A = A & fetched;
 	if (A == 0x00)
 	{
 		status |= (1 << Z);
@@ -271,7 +287,7 @@ uint8_t emu6502::CPU::AND()
 */
 uint8_t emu6502::CPU::ASL()
 {
-	uint8_t fetched = fetch();
+	fetch();
 	uint16_t temp = (uint16_t)fetched << 1;
 	// Carry flag: Activate if high byte is non-zero
 	((temp & 0xFF00) > 0) ? status |= (1 << C) : status &= ~(1 << C);
@@ -283,6 +299,7 @@ uint8_t emu6502::CPU::ASL()
 		A = temp & 0x00FF;
 	else
 		ram.mem_write(abs_addr, temp & 0x00FF);
+	return 0;
 }
 
 /*
@@ -318,6 +335,11 @@ uint8_t emu6502::CPU::BCC()
 	return 0;
 }
 
+/*
+* BEQ: Branch if equal
+* If the zero flag is set then add the relative displacement to 
+* the program counter to cause a branch to a new location.
+*/
 uint8_t emu6502::CPU::BEQ()
 {
 	if (status & (1 << Z))
@@ -331,6 +353,26 @@ uint8_t emu6502::CPU::BEQ()
 		pc = abs_addr;
 
 	}
+	return 0;
+}
+
+/*
+* BIT: Bit test
+* Test if one or more bits are set in a memory location using AND.
+* Sets status flags based on the result
+*/
+uint8_t emu6502::CPU::BIT()
+{
+	fetch();
+	// 16 bits used to catach overflows
+	uint16_t temp = A & fetched;
+	// Zero: Set if result is zero
+	(temp & 0x00FF) & 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	// Negative: Set if bit 7 is 1
+	fetched & (1 << 7) ? (status |= (1 << N)) : (status &= ~(1 << N));
+	// Overflow: Set if bit 6 is 1
+	fetched & (1 << 6) ? (status |= (1 << V)) : (status &= ~(1 << V));
+
 	return 0;
 }
 
@@ -376,6 +418,25 @@ uint8_t emu6502::CPU::BPL()
 		}
 		pc = abs_addr;
 	}
+	return 0;
+}
+
+uint8_t emu6502::CPU::BRK()
+{
+	pc++;
+	// Set interrupt disable flag
+	status |= (1 << I);
+	// Write current program counter to stack
+	ram.mem_write(0x0100 + stkp--, (pc >> 8) & 0x00FF);
+	ram.mem_write(0x0100 + stkp--, pc & 0x00FF);
+	// Write current status to stack
+	status |= (1 << B);
+	ram.mem_write(0x0100 + stkp--, status);
+	status &= ~(1 << B);
+	// Set program counter to defined location
+	pc = (uint16_t)ram.mem_read(0xFFFE) | 
+		((uint16_t)ram.mem_read(0xFFFF) << 8);
+
 	return 0;
 }
 
@@ -433,15 +494,292 @@ uint8_t emu6502::CPU::CLV()
 	return 0;
 }
 
+/*
+* CMP: Compare accumulator and fetched value
+* Compare using flags to tell result
+*/
+uint8_t emu6502::CPU::CMP()
+{
+	fetch();
+	uint16_t temp = (uint16_t)A - (uint16_t)fetched;
+	// Carry: Set if A >= M
+	A >= fetched ? status |= (1 << C) : status &= ~(1 << C);
+	// Zero: Set if (A-M) = 0
+	(temp & 0x00FF) == 0x0000 ? status |= (1 << Z) : status &= ~(1 << Z);
+	// Negative: Set if 7 bit is 1
+	temp & 0x0080 ? status |= (1 << N) : status &= ~(1 << N);
+
+	return 1;
+}
+
+/*
+* CPX: Compare X register w/ fetched value
+*/
+uint8_t emu6502::CPU::CPX()
+{
+	fetch();
+	uint16_t temp = (uint16_t)x - (uint16_t)fetched;
+	// Carry: Set if A >= M
+	x >= fetched ? status |= (1 << C) : status &= ~(1 << C);
+	// Zero: Set if (A-M) = 0
+	(temp & 0x00FF) == 0x0000 ? status |= (1 << Z) : status &= ~(1 << Z);
+	// Negative: Set if 7 bit is 1
+	temp & 0x0080 ? status |= (1 << N) : status &= ~(1 << N);
+
+	return 0;
+}
+
+/*
+* CPY: Compare Y register w/ fetched value
+*/
+uint8_t emu6502::CPU::CPY()
+{
+	fetch();
+	uint16_t temp = (uint16_t)y - (uint16_t)fetched;
+	// Carry: Set if A >= M
+	y >= fetched ? status |= (1 << C) : status &= ~(1 << C);
+	// Zero: Set if (A-M) = 0
+	(temp & 0x00FF) == 0x0000 ? status |= (1 << Z) : status &= ~(1 << Z);
+	// Negative: Set if 7 bit is 1
+	temp & 0x0080 ? status |= (1 << N) : status &= ~(1 << N);
+
+	return 0;
+}
+
+/*
+* DEC: Decrement value at memory location
+*/
+uint8_t emu6502::CPU::DEC()
+{
+	fetch();
+	uint16_t temp = fetched - 1;
+	ram.mem_write(abs_addr, temp & 0x00FF);
+	(temp & 0x00FF) == 0x0000 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(temp & 0x0080) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+uint8_t emu6502::CPU::DEX()
+{
+	x--;
+	(x == 0x00) ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(x & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << Z));
+
+	return 0;
+}
+
+uint8_t emu6502::CPU::DEY()
+{
+	y--;
+	(y == 0x00) ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(y & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << Z));
+
+	return 0;
+}
+
+/*
+* EOR: Exclusive OR
+* Set A to A^M
+*/
+uint8_t emu6502::CPU::EOR()
+{
+	fetch();
+	A = A ^ fetched;
+	(A == 0x00) ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(A & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 1;
+}
+
+/*
+* INC: Increment Memory
+* M = M + 1
+*/
+uint8_t emu6502::CPU::INC()
+{
+	fetch();
+	uint16_t temp = fetched + 1;
+	ram.mem_write(abs_addr, temp & 0x00FF);
+	(temp & 0x00FF) == 0x0000 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(temp & 0x0080) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* INX: Increment value in X register
+*/
+uint8_t emu6502::CPU::INX()
+{
+	x++;
+	(x == 0x00) ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(x & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* INY: Increment value in Y register
+*/
+uint8_t emu6502::CPU::INY()
+{
+	y++;
+	y == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	y & 0x80 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+
+	return 0;
+}
+
+/*
+* JMP: Jump to location
+*/
+uint8_t emu6502::CPU::JMP()
+{
+	pc = abs_addr;
+	return 0;
+}
+
+/*
+* JSR: Jump to Sub-Routine
+* Push current pc to stack
+*/
+uint8_t emu6502::CPU::JSR()
+{
+	pc--;
+	ram.mem_write(0x0100 + stkp--, (pc >> 8) & 0x00FF);
+	ram.mem_write(0x0100 + stkp--, pc & 0x00FF);
+	pc = abs_addr;
+
+	return 0;
+}
 
 uint8_t emu6502::CPU::LDA()
 {
-	uint8_t val = fetch();
-	A = val;
+	fetch();
+	A = fetched;
 	// Sets zero flag if A=0
-	status |= (A == 0) ? (1 << Z) : 0;
+	(A == 0) ? (status |= (1 << Z)) : (status &= ~(1 << Z));
 	// Set negative flag if bit 7 of A is set
-	status |= (A & 0b1000000) ? (1 << N) : 0;
+	(A & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << N));
+	return 1;
+}
+
+/*
+* LDX: Load the X register
+* X = M
+*/
+uint8_t emu6502::CPU::LDX()
+{
+	fetch();
+	x = fetched;
+	x == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	x & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 1;
+}
+
+/*
+* LDY: Load the Y register
+* Y = M
+*/
+uint8_t emu6502::CPU::LDY()
+{
+	fetch();
+	y = fetched;
+	y == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	y & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+	
+	return 1;
+}
+
+/*
+* LSR: Logical Shift Right
+* Shifts bits in memory to the right to memory or accumulator
+*/
+uint8_t emu6502::CPU::LSR()
+{
+	fetch();
+	fetched & 0x0001 ? (status |= (1 << C)) : (status &= ~(1 << C));
+	uint8_t temp = fetched >> 1;
+	(temp & 0x00FF) == 0x0000 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	temp & 0x0080 ? (status |= (1 << N)) : (status &= ~(1 << N));
+	if (instructions[ir].mode == &CPU::IMP)
+	{
+		A = temp & 0x00FF;
+	}
+	else
+	{
+		ram.mem_write(abs_addr, temp & 0x00FF);
+	}
+
+	return 0;
+}
+
+/*
+* NOP: No Operation
+* No changes to processor other than incrementing PC
+*/
+uint8_t emu6502::CPU::NOP()
+{
+	pc++;
+	return 0;
+}
+
+/*
+* ORA: Logical Inclusive OR
+* Perform inclusive OR, store on accumulator
+* A = A | M
+*/
+uint8_t emu6502::CPU::ORA()
+{
+	fetch();
+	A = A | fetched;
+	A == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	A & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 1;
+}
+
+/*
+* PHP: Push processor status, copies status flags to stack
+*/
+uint8_t emu6502::CPU::PHP()
+{
+	ram.mem_write(0x0100 + stkp--, status);
+
+	return 0;
+}
+
+/*
+* PLP: Pull a byte off the stack and replace the status register w/ that byte
+*/
+uint8_t emu6502::CPU::PLP()
+{
+	status = ram.mem_read(0x0100 + ++stkp);
+
+	return 0;
+}
+
+/*
+* ROL: Rotate Left, shifts the bits in A or M to the left
+*/
+uint8_t emu6502::CPU::ROL()
+{
+	fetch();
+	uint16_t temp = (uint16_t)(fetched << 1) | (status & (1 << C));
+	temp & 0xFF00 ? (status |= (1 << C)) : (status &= ~(1 << C));
+	(temp & 0x00FF) == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	temp & (1 << 7) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	if (instructions[ir].mode == &CPU::IMP)
+	{
+		A = temp & 0x00FF;
+	}
+	else
+	{
+		ram.mem_write(abs_addr, temp & 0x00FF);
+	}
 
 	return 0;
 }
@@ -452,7 +790,7 @@ uint8_t emu6502::CPU::ADC()
 	* Add with Carry In
 	* A = A + M + C
 	*/
-	uint8_t fetched = fetch();
+	fetch();
 	// We're using 16 bits temp to capture the carry bit and chain ADC function
 	uint16_t temp = (uint16_t)A + (uint16_t)fetched + (uint16_t)(status & (1 << C));
 
@@ -478,7 +816,7 @@ uint8_t emu6502::CPU::ADC()
 */
 uint8_t emu6502::CPU::SBC()
 {
-	uint8_t fetched = fetch();
+	fetch();
 	// We still use 16 bits to catch carry outs
 	uint16_t value = ((uint16_t)fetched) ^ 0x00FF;
 

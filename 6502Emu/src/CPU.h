@@ -32,6 +32,7 @@ namespace emu6502
 		uint8_t x, y;
 
 		// This is to store values modified by addressing modes
+		uint8_t fetched; 
 		uint16_t abs_addr; // Store absolute (full) memory address
 		uint16_t rel_addr; // Store branch instructions to jump
 		uint8_t  ir; // Store current instruction
@@ -39,9 +40,9 @@ namespace emu6502
 		struct instruction
 		{
 			std::string name;
-			uint8_t(CPU::* op)();
-			uint8_t(CPU::* mode)();
-			int cycles;
+			uint8_t (CPU::* op)();
+			uint8_t (CPU::* mode)();
+			int cycles = 0;
 		};
 		std::vector<instruction> instructions;
 
