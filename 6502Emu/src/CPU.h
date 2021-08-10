@@ -24,12 +24,14 @@ namespace emu6502
 
 	private:
 		RAM ram;
-		// Program counter and stack pointer
-		uint16_t pc, stkp;
+		// Program counter
+		uint16_t pc;
 		// Our accumulator for arithmetic and logical opreations
 		uint8_t A;
 		// Registers x and y
 		uint8_t x, y;
+		// Stack pointer
+		uint8_t stkp;
 
 		// This is to store values modified by addressing modes
 		uint8_t fetched; 

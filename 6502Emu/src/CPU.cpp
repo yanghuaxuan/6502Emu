@@ -752,6 +752,125 @@ uint8_t emu6502::CPU::PHP()
 }
 
 /*
+* SEC: Set carry flag to 1
+*/
+uint8_t emu6502::CPU::SEC()
+{
+	status |= (1 << C);
+	return 0;
+}
+
+/*
+* SED: Set decimal flag to 1
+*/
+uint8_t emu6502::CPU::SED()
+{
+	status |= (1 << D);
+	return 0;
+}
+
+/*
+* SEI: Set decimal flag to 1
+*/
+uint8_t emu6502::CPU::SEI()
+{
+	status |= (1 << I);
+	return 0;
+}
+
+/*
+* STA: Set contents of the accumulator into memory
+*/
+uint8_t emu6502::CPU::STA()
+{
+	ram.mem_write(abs_addr, A);
+	return 0;
+}
+
+/*
+* STX: Store X register
+*/
+uint8_t emu6502::CPU::STX()
+{
+	ram.mem_write(abs_addr, x);
+	return 0;
+}
+
+/*
+* STY: Store Y register
+*/
+uint8_t emu6502::CPU::STY()
+{
+	ram.mem_write(abs_addr, y);
+	return 0;
+}
+
+/*
+* TAX: Transfer Accumulator to X register
+*/
+uint8_t emu6502::CPU::TAX()
+{
+	x = A;
+	x == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(x & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* TAY: Transfer Accumulator to Y register
+*/
+uint8_t emu6502::CPU::TAY()
+{
+	y = A;
+	y == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	(y & 0x80) ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* TSX: Transfer stack pointer to X
+*/
+uint8_t emu6502::CPU::TSX()
+{
+	x = stkp;
+	x == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	x & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* TXA: Transfer X register to accumulator
+*/
+uint8_t emu6502::CPU::TXA()
+{
+	A = x;
+	A == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	A & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+
+	return 0;
+}
+
+/*
+* TXS: Transfer X register to stack pointer
+*/
+uint8_t emu6502::CPU::TXS()
+{
+	stkp = x;
+	return 0;
+}
+
+uint8_t emu6502::CPU::TYA()
+{
+	A = y;
+	A == 0 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	A & 0x80 ? (status |= (1 << N)) : (status &= ~(1 << N));
+	return 0;
+}
+
+/*
 * PLP: Pull a byte off the stack and replace the status register w/ that byte
 */
 uint8_t emu6502::CPU::PLP()
@@ -780,6 +899,53 @@ uint8_t emu6502::CPU::ROL()
 	{
 		ram.mem_write(abs_addr, temp & 0x00FF);
 	}
+
+	return 0;
+}
+
+/*
+* ROR: Rotate Right, shifts the bits in A or M to the left
+*/
+uint8_t emu6502::CPU::ROR()
+{
+	fetch();
+	uint16_t temp = (uint16_t)(status & (1 << C)) | (fetched >> 1);
+	fetched & 0x0001 ? (status |= (1 << C)) : (status &= ~(1 << C));
+	(temp & 0x00FF) == 0x00 ? (status |= (1 << Z)) : (status &= ~(1 << Z));
+	temp & 0x0080 ? (status |= (1 << N)) : (status &= ~(1 << N));
+	if (instructions[ir].mode == &CPU::IMP)
+	{
+		A = temp & 0x00FF;
+	}
+	else
+	{
+		ram.mem_write(abs_addr, temp & 0x00FF);
+	}
+
+	return 0;
+}	
+
+uint8_t emu6502::CPU::RTI()
+{
+	// We're doing pre-increments because during IRQ, the stack pointer
+	// would've been incremented 3 times, and therefore would've been off-by-one
+
+	// Set back status register 
+	status = ram.mem_read(0x0100 + ++stkp);
+	status &= ~(1 << B);
+	status &= ~(1 << U);
+	// Set back program counter
+	pc = (uint16_t)ram.mem_read(0x0100 + ++stkp);
+	pc |= (uint16_t)ram.mem_read(0x0100 + ++stkp) << 8;
+
+	return 0;
+}
+
+uint8_t emu6502::CPU::RTS()
+{
+	pc = (uint16_t)ram.mem_read(0x0100 + ++stkp);
+	pc |= (uint16_t)ram.mem_read(0x0100 + ++stkp) << 8;
+	pc++;
 
 	return 0;
 }
@@ -858,19 +1024,11 @@ uint8_t emu6502::CPU::PLA()
 	return 0;
 }
 
-uint8_t emu6502::CPU::RTI()
+/*
+* XXX: Illegal opcode
+*/
+uint8_t emu6502::CPU::XXX()
 {
-// We're doing pre-increments because during IRQ, the stack pointer
-// would've been incremented 3 times, and therefore would've been off-by-one
-	
-	// Set back status register 
-	status = ram.mem_read(0x0100 + ++stkp);
-	status &= ~(1 << B);
-	status &= ~(1 << U);
-	// Set back program counter
-	pc = (uint16_t)ram.mem_read(0x0100 + ++stkp);
-	pc |= (uint16_t)ram.mem_read(0x0100 + ++stkp) << 8;
-
 	return 0;
 }
 
