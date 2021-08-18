@@ -2,7 +2,7 @@
 - Written in C++  
 # Status  
 It probably works? Haven't tested anything yet...  
-Currently writing an simple assembler  
+Currently working with Curses UI  
 # Building
 * Clone this directory  
 * Go to /build folder  
