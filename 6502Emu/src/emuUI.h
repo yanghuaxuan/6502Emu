@@ -7,11 +7,13 @@ namespace emu6502
     public:
         emuUI();
         ~emuUI();
-        void initUI();
-        void drawUI();
+        void initUI(); // Create curses TUI
+        void drawUI(); // Draw GUI
+        void drawRegister(); // Draw Window used to show register
         void inputHandler(WINDOW *window);
         void close();
     private:
-        int row, col;
+        int maxRow, maxCol;
+        WINDOW *registerWin = nullptr;
     };
 }
