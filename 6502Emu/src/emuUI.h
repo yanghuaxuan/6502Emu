@@ -4,10 +4,14 @@ namespace emu6502
 {
     class emuUI 
     {
-        public:
+    public:
         emuUI();
         ~emuUI();
         void initUI();
+        void drawUI();
+        void inputHandler(WINDOW *window);
         void close();
+    private:
+        int row, col;
     };
 }

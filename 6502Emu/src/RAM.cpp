@@ -20,7 +20,7 @@ void emu6502::RAM::init()
 uint8_t emu6502::RAM::mem_read(uint16_t addr)
 {
 	// Check if address is legal
-	if (addr >= 0x0000 && addr < 0x10000)
+	if (addr >= 0x0000 && addr <= 0xFFFF)
 	{
 		return ram[addr];
 	}
