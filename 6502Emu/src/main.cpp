@@ -1,5 +1,6 @@
 #include <iostream>
-#include "emu6502.h"
+#include "emulator.h"
+#include "emuUI.h"
 
 int main()
 {
