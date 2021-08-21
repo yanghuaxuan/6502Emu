@@ -1,19 +1,26 @@
 #include <ncurses.h>
+#include <cstdint>
+#include "CPU.h"
 
 namespace emu6502 
 {
     class emuUI 
     {
     public:
-        emuUI();
+        emuUI(CPU *cpu);
         ~emuUI();
         void initUI(); // Create curses TUI
-        void drawUI(); // Draw GUI
+        void drawHeader(); // Draw GUI
         void drawRegister(); // Draw Window used to show register
-        void inputHandler(WINDOW *window);
+        void updateRegisters();
+        void drawControls();
+        bool inputHandler(char ch);
+        void inputListener();
         void close();
     private:
+        CPU *cpu = nullptr;
         int maxRow, maxCol;
-        WINDOW *registerWin = nullptr;
+        WINDOW *winRegister = nullptr;
+        WINDOW *winControl = nullptr;
     };
 }

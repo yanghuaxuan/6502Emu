@@ -17,13 +17,18 @@ namespace emu6502
         CPU();
         ~CPU();
 
-        void connectRam(RAM& ram);
+        void connectRam(RAM *ram);
         void reset();
+        void execute();
 
-
+        uint8_t getx();
+        uint8_t gety();
+        uint8_t getA();
+        uint8_t getS();
+        uint16_t getP();
 
     private:
-        RAM ram;
+        RAM *ram = nullptr;
         // Program counter
         uint16_t pc;
         // Our accumulator for arithmetic and logical opreations
@@ -50,10 +55,6 @@ namespace emu6502
 
         // Fetch an instruction from program counter or a specified address
         uint8_t fetch();
-        uint8_t fetch(uint16_t addr);
-        // Fetch with IMP checking
-        uint8_t fetch_noIMP();
-        void execute();
 
         // Interrupts
         void irq();

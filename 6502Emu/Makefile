@@ -1,5 +1,5 @@
 CC := g++
-CXXFLAGS := -std=c++17 -Wall -pedantic -pedantic-errors
+CXXFLAGS := -std=c++17 -g -Wall -pedantic -pedantic-errors
 LDFLAGS := -lncurses
 VPATH = src:${srcPath}
 
