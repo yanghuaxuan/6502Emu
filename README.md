@@ -9,3 +9,5 @@ Currently working with Curses UI
   ```cd {PATH_TO_CLONED_DIRECTORY}/6502Emu/build```
 * Set srcPath directory (For Makefile)  
   ```export srcPath='{PATH_TO_SRC_DIRECTORY}'``` 
+* Use GNU Make to build
+  ```make -f "../Makefile" all```
