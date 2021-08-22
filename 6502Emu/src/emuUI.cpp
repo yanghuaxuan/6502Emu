@@ -127,7 +127,12 @@ void emu6502::emuUI::updatePCViewer()
     int pcOffset = maxPCVY / 2;
     for(int i = 2; i < maxPCVY - 1; i++)
     {
+        if((cpu->getP() + i - 6) == cpu->getP())
+        {
+            wattrset(winPCView, A_STANDOUT);
+        }
         mvwprintw(winPCView, i, 1, "%X, %X", (cpu->getP() + i - 6), (ram->mem_read(cpu->getP() + i - 6)));
+        wattroff(winPCView, A_STANDOUT);
     }
     wrefresh(winPCView);
     refresh();
