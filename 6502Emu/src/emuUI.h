@@ -13,7 +13,8 @@ namespace emu6502
         void drawHeader(); // Draw GUI
         void drawRegister(); // Draw Window used to show register
         void updateRegisters();
-        void drawControls();
+        void drawPCViewer();
+        void updatePCViewer();
         bool inputHandler(char ch);
         void inputListener();
         void close();
@@ -21,6 +22,6 @@ namespace emu6502
         CPU *cpu = nullptr;
         int maxRow, maxCol;
         WINDOW *winRegister = nullptr;
-        WINDOW *winControl = nullptr;
+        WINDOW *winPCView = nullptr;
     };
 }

@@ -22,7 +22,7 @@ void emu6502::emuUI::initUI()
     keypad(stdscr, TRUE);
     getmaxyx(stdscr, maxRow, maxCol);
     drawHeader();
-    drawControls();
+    drawPCViewer();
     drawRegister();
     inputListener();
     close();
@@ -43,6 +43,7 @@ bool emu6502::emuUI::inputHandler(char ch)
         // Updates Register
         cpu->execute();
         updateRegisters();
+        updatePCViewer();
         return true;
     case 'r':
         cpu->reset();
@@ -111,17 +112,30 @@ void emu6502::emuUI::updateRegisters()
     wrefresh(winRegister);
 }
 
-void emu6502::emuUI::drawControls()
+void emu6502::emuUI::drawPCViewer()
 {
-    winControl = newwin(maxRow - 4, maxCol * 0.80, 2, 3);
-    box(winControl, '|', '=');
-    mvwprintw(winControl, 1, 1, "Object Code:");
-    wrefresh(winControl);
+    winPCView = newwin(maxRow - 4, maxCol * 0.80, 2, 3);
+    box(winPCView, '|', '=');
+    mvwprintw(winPCView, 1, 1, "PC Viewer");
+    wrefresh(winPCView);
+}
+
+void emu6502::emuUI::updatePCViewer()
+{
+    int maxPCVX, maxPCVY;
+    getmaxyx(winPCView, maxPCVY, maxPCVX);
+    int pcOffset = maxPCVY / 2;
+    for(int i = 2; i < maxPCVY - 1; i++)
+    {
+        mvwprintw(winPCView, i, 1, "%X, %X", (cpu->getP() + i - 6), "Test");
+    }
+    wrefresh(winPCView);
+    refresh();
 }
 
 void emu6502::emuUI::close()
 {
-    werase(winControl);
+    werase(winPCView);
     werase(winRegister);
     endwin();
 }
