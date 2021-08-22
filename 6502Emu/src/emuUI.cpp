@@ -43,6 +43,11 @@ bool emu6502::emuUI::inputHandler(char ch)
         // Updates Register
         cpu->execute();
         updateRegisters();
+        return true;
+    case 'r':
+        cpu->reset();
+        updateRegisters();
+        return true;
     default:
         refresh();
         return true;

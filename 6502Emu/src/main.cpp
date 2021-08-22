@@ -11,15 +11,14 @@ int main()
 
 	emu6502::RAM ram;
 	emu6502::CPU cpu;
-	cpu.connectRam(&ram);
+	emu6502::emuUI ui(&cpu);
 
+	cpu.connectRam(&ram);
 	// Load object code into RAM
 	loadObjCode(&ram, "A2 01");
 	cpu.reset();
-	printf("Low: %X\n", ram.mem_read(0xFFFC));
-	printf("High: %X\n", ram.mem_read(0xFFFD));
 	printf("PC: %X\n", cpu.getP());
-
+	ui.initUI();
 
 	return 0;
 }
