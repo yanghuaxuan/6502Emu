@@ -1,9 +1,9 @@
 #include "emuUI.h"
-#include "CPU.h"
 
-emu6502::emuUI::emuUI(CPU *_cpu)
+emu6502::emuUI::emuUI(CPU *_cpu, RAM *_ram)
 {
     cpu = _cpu;
+    ram = _ram;
     maxRow = 0;
     maxCol = 0;
 }

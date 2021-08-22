@@ -6,7 +6,9 @@
 #include <iostream>
 #include <map>
 
-emu6502::CPU::CPU() {
+emu6502::CPU::CPU(RAM *_ram) {
+  ram = _ram;
+
   instructions = {
       {"BRK", &CPU::BRK, &CPU::IMM, 7}, {"ORA", &CPU::ORA, &CPU::IZX, 6},
       {"???", &CPU::XXX, &CPU::IMP, 2}, {"???", &CPU::XXX, &CPU::IMP, 8},
@@ -147,11 +149,6 @@ uint8_t emu6502::CPU::getA() { return A; }
 uint8_t emu6502::CPU::getS() { return stkp; }
 uint16_t emu6502::CPU::getP() { return pc; }
 
-void emu6502::CPU::connectRam(RAM *ramP) { ram = ramP; }
-
-/*
- * Reset: reset CPU to a known state
- */
 void emu6502::CPU::reset() {
   // Set program counter
   abs_addr = 0xFFFC; // Reads from 0xFFFC to get absolute value to address to jump to

@@ -10,10 +10,9 @@ int main()
 	using namespace std;
 
 	emu6502::RAM ram;
-	emu6502::CPU cpu;
-	emu6502::emuUI ui(&cpu);
+	emu6502::CPU cpu(&ram);
+	emu6502::emuUI ui(&cpu, &ram);
 
-	cpu.connectRam(&ram);
 	// Load object code into RAM
 	loadObjCode(&ram, "A2 01");
 	cpu.reset();

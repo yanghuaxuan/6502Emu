@@ -14,10 +14,9 @@ namespace emu6502
     class CPU
     {
     public:
-        CPU();
+        CPU(RAM *_ram);
         ~CPU();
 
-        void connectRam(RAM *ram);
         void reset();
         void execute();
 
