@@ -22,6 +22,7 @@ void emu6502::emuUI::initUI()
     keypad(stdscr, TRUE);
     getmaxyx(stdscr, maxRow, maxCol);
     drawHeader();
+    drawControls();
     drawPCViewer();
     drawRegister();
     inputListener();
@@ -75,7 +76,7 @@ void emu6502::emuUI::drawHeader()
 
 void emu6502::emuUI::drawRegister()
 {
-    winRegister = newwin(11, 12, 2, maxCol - 12);
+    winRegister = newwin(11, 12, 3, maxCol - 12);
     box(winRegister, '|', '=');
     // Draw the "REGISTER" header underlined
     wattrset(winRegister, A_UNDERLINE);
@@ -112,9 +113,18 @@ void emu6502::emuUI::updateRegisters()
     wrefresh(winRegister);
 }
 
+void emu6502::emuUI::drawControls()
+{
+    winControls =  newwin(1, maxCol, 2, 3);
+    mvwprintw(winControls, 0, 1, "(n)Execute  " 
+                                 "(r)Reset CPU  "
+                                 "(q)Quit "  );
+    wrefresh(winControls);
+}
+
 void emu6502::emuUI::drawPCViewer()
 {
-    winPCView = newwin(maxRow - 4, maxCol * 0.80, 2, 3);
+    winPCView = newwin(maxRow - 4, maxCol * 0.80, 3, 3);
     box(winPCView, '|', '=');
     mvwprintw(winPCView, 1, 1, "PC Viewer");
     wrefresh(winPCView);
