@@ -1,3 +1,4 @@
+![6502 Emulator in action](./emu.png)
 # Simple 6502 Emulator
 - Written in C++  
 # Status  
