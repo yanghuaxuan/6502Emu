@@ -49,6 +49,7 @@ bool emu6502::emuUI::inputHandler(char ch)
     case 'r':
         cpu->reset();
         updateRegisters();
+        updatePCViewer();
         return true;
     default:
         refresh();
