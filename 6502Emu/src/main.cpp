@@ -16,7 +16,6 @@ int main()
 	// Load object code into RAM
 	loadObjCode(&ram, "A2 01");
 	cpu.reset();
-	printf("PC: %X\n", cpu.getP());
 	ui.initUI();
 
 	return 0;
